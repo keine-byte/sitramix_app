@@ -91,7 +91,7 @@ class _InicioScreenState extends State<InicioScreen> {
 
   bool get _puedeVerMiCuenta => _sesion?.rol == Rol.asociado;
 
-  String get _nombre => _nombreRegistrado ?? _etiquetaRol;
+  String get _nombre => _nombreRegistrado ?? _usuarioSesion ?? _etiquetaRol;
 
   String? get _nombreRegistrado {
     final sesion = _sesion;
@@ -102,6 +102,15 @@ class _InicioScreenState extends State<InicioScreen> {
     if (usuario == null || usuario.isEmpty) return null;
     if (usuario == sesion?.identificacion) return null;
     if (RegExp(r'^\d+$').hasMatch(usuario)) return null;
+    return usuario;
+  }
+
+  /// El login no devuelve los nombres de GERENTE y ASISTENTE y no existe un
+  /// endpoint de perfil, así que se saluda con la cuenta autenticada para no
+  /// mostrar únicamente el rol (que ya aparece en el chip).
+  String? get _usuarioSesion {
+    final usuario = _sesion?.username?.trim();
+    if (usuario == null || usuario.isEmpty) return null;
     return usuario;
   }
 

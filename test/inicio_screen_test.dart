@@ -130,7 +130,7 @@ void main() {
     expect(stat('asociados'), findsNothing);
   });
 
-  testWidgets('sin nombre en la API saluda con el rol, no con el documento', (
+  testWidgets('sin nombre en la API saluda con el usuario de la sesión', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -146,9 +146,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Bienvenido,'), findsOneWidget);
-    expect(find.text('Gerente'), findsOneWidget);
+    expect(find.text('1101812715'), findsOneWidget);
+    expect(find.text('Gerente'), findsNothing);
     expect(find.text('GERENTE'), findsOneWidget);
-    expect(find.text('1101812715'), findsNothing);
   });
 
   testWidgets('el perfil muestra el nombre y la empresa de la sesión', (

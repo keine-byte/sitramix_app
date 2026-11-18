@@ -55,3 +55,20 @@ compartidos del prototipo están en `lib/widgets/prototipo/` (`ProtoField`, `Pro
 `ApiService` admite GET, POST, PUT y DELETE con JSON, timeout y errores HTTP; la base se
 configura con `--dart-define=API_BASE_URL=https://tu-api`. `SecureStorageService` guarda
 la sesión (`token`, `rol`, datos del usuario) y las pantallas la rehidratan al arrancar.
+
+## Pruebas
+
+- `flutter test`: suite de widgets y unitarios (login, módulos, formularios, sesión y API
+  con `MockClient`). No necesita red.
+- `dart run tool/prueba_humo_api.dart <usuario> <password>`: prueba de humo contra la API
+  real usando los servicios de la app (login, nombre del usuario, listados del inicio,
+  consulta del primer registro de cada módulo y casos negativos 401). También acepta
+  `SITRAMIX_USUARIO` y `SITRAMIX_PASSWORD` como variables de entorno y no imprime el token.
+
+### Nombre del usuario
+
+`LoginResponse` no incluye `nombres` para GERENTE ni ASISTENTE y la API no expone un
+endpoint de perfil. `NombreUsuarioService` sólo puede resolverlo cuando la identificación
+también existe como asociado. Si no lo consigue, el inicio saluda con el usuario de la
+sesión y deja el rol en su chip. Para mostrar el nombre real, el backend debe añadir
+`nombres` a la respuesta del login (o publicar un endpoint de perfil).
