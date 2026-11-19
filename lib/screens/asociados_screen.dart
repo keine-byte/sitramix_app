@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../config/app_theme.dart';
 import '../models/asociado/asociado.dart';
@@ -8,6 +7,7 @@ import '../services/remote/api_service.dart';
 import '../services/remote/asociados_api.dart';
 import '../utils/api_error_message.dart';
 import '../utils/fechas.dart';
+import '../utils/portapapeles.dart';
 import '../utils/sesion_expirada.dart';
 import '../widgets/data_rows.dart';
 import '../widgets/fields/custom_text_field.dart';
@@ -17,12 +17,16 @@ class AsociadosScreen extends StatefulWidget {
   const AsociadosScreen({
     required this.api,
     this.puedeGenerarCredencial = true,
+    this.copiarTexto = copiarAlPortapapeles,
     super.key,
   });
 
   final AsociadosApi api;
 
   final bool puedeGenerarCredencial;
+
+  /// Copia al portapapeles; se inyecta en las pruebas.
+  final Future<bool> Function(String texto) copiarTexto;
 
   @override
   State<AsociadosScreen> createState() => _AsociadosScreenState();
@@ -114,6 +118,7 @@ class _AsociadosScreenState extends State<AsociadosScreen> {
         asociado: asociado,
         api: widget.api,
         puedeGenerarCredencial: widget.puedeGenerarCredencial,
+        copiarTexto: widget.copiarTexto,
       ),
     );
     if (aEditar == null || !mounted) return;
@@ -363,11 +368,13 @@ class _DetalleAsociado extends StatefulWidget {
     required this.asociado,
     required this.api,
     required this.puedeGenerarCredencial,
+    required this.copiarTexto,
   });
 
   final Asociado asociado;
   final AsociadosApi api;
   final bool puedeGenerarCredencial;
+  final Future<bool> Function(String texto) copiarTexto;
 
   @override
   State<_DetalleAsociado> createState() => _DetalleAsociadoState();
@@ -427,17 +434,47 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
   Future<void> _copiarCredencial() async {
     final credencial = _credencial;
     if (credencial == null) return;
-    await Clipboard.setData(
-      ClipboardData(
-        text:
-            'Usuario: ${credencial.username}\n'
-            'Contraseña: ${credencial.passwordTemporal}',
-      ),
-    );
+    final texto =
+        'Usuario: ${credencial.username}\n'
+        'Contraseña: ${credencial.passwordTemporal}';
+    final copiado = await widget.copiarTexto(texto);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Credencial copiada.')));
+    if (copiado) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Credencial copiada.')));
+      return;
+    }
+    await _mostrarCopiaManual(credencial);
   }
+
+  Future<void> _mostrarCopiaManual(CredencialTemporal credencial) =>
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Copia la credencial a mano'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'El navegador no permitió escribir en el portapapeles. '
+                'Selecciona los datos y cópialos con Ctrl+C '
+                '(o mantén pulsado en el móvil).',
+              ),
+              const SizedBox(height: 12),
+              SelectableText('Usuario: ${credencial.username}'),
+              const SizedBox(height: 4),
+              SelectableText('Contraseña: ${credencial.passwordTemporal}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -561,9 +598,15 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
           ),
         ),
         const SizedBox(height: 10),
-        Text('Usuario: ${credencial.username}'),
+        SelectableText(
+          'Usuario: ${credencial.username}',
+          key: const ValueKey('credencial-usuario'),
+        ),
         const SizedBox(height: 4),
-        Text('Contraseña: ${credencial.passwordTemporal}'),
+        SelectableText(
+          'Contraseña: ${credencial.passwordTemporal}',
+          key: const ValueKey('credencial-password'),
+        ),
         const SizedBox(height: 10),
         const Text(
           'Cópiala ahora: se muestra una sola vez y regenerarla invalida el '
@@ -572,6 +615,7 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
+          key: const ValueKey('credencial-copiar'),
           onPressed: _copiarCredencial,
           icon: const Icon(Icons.copy_rounded, size: 18),
           label: const Text('Copiar credencial'),

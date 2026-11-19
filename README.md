@@ -72,3 +72,12 @@ endpoint de perfil. `NombreUsuarioService` sólo puede resolverlo cuando la iden
 también existe como asociado. Si no lo consigue, el inicio saluda con el usuario de la
 sesión y deja el rol en su chip. Para mostrar el nombre real, el backend debe añadir
 `nombres` a la respuesta del login (o publicar un endpoint de perfil).
+
+### Copiar credenciales en web
+
+`Clipboard.setData` de Flutter usa `navigator.clipboard.writeText`, que el navegador puede
+rechazar con `PlatformException(copy_fail)` cuando la pestaña no tiene el foco, cuando se
+deniega el permiso `clipboard-write` o cuando la app corre dentro de un iframe (por ejemplo,
+el navegador integrado del IDE). `lib/utils/portapapeles.dart` intenta primero la API
+asíncrona, luego la copia clásica con `document.execCommand('copy')` y, si ambas fallan, el
+detalle del asociado abre un diálogo con la credencial seleccionable para copiarla a mano.

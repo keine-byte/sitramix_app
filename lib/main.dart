@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'config/app_theme.dart';
 import 'models/sesion/sesion.dart';
 import 'routes/app_routes.dart';
+import 'screens/cambiar_contrasena_screen.dart';
 import 'screens/inicio_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/restablecer_contrasena_screen.dart';
@@ -54,6 +55,14 @@ class SitramixApp extends StatelessWidget {
         case AppRoutes.resetPassword:
           return MaterialPageRoute(
             builder: (context) => const ResetPasswordScreen(),
+          );
+        case AppRoutes.cambiarPassword:
+          final sesion = settings.arguments;
+          if (sesion is! Sesion) {
+            return MaterialPageRoute(builder: (context) => const LoginScreen());
+          }
+          return MaterialPageRoute(
+            builder: (context) => CambiarContrasenaScreen(sesion: sesion),
           );
         default:
           return MaterialPageRoute(builder: (context) => const LoginScreen());

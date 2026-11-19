@@ -75,10 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (sesion.requiereCambioPassword) {
-        _mostrarError(
-          'Debes cambiar tu contraseña antes de continuar.',
-          esError: false,
-        );
+        setState(() => _cargando = false);
+        Navigator.of(context)
+            .pushNamed(AppRoutes.cambiarPassword, arguments: sesion);
         return;
       }
 
