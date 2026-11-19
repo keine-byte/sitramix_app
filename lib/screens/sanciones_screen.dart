@@ -329,13 +329,9 @@ class _SancionesScreenState extends State<SancionesScreen> {
                     ),
                   ),
                 ),
-                if (sancion.vigenteHoy) ...[
-                  const Etiqueta('VIGENTE', color: Color(0xFFB45309)),
-                  const SizedBox(width: 6),
-                ],
                 Etiqueta(
-                  sancion.estado.apiValue,
-                  color: _colorEstado(sancion.estado),
+                  sancion.estadoVisible,
+                  color: _colorEstadoVisible(sancion),
                 ),
               ],
             ),
@@ -363,9 +359,10 @@ class _SancionesScreenState extends State<SancionesScreen> {
   );
 }
 
-Color _colorEstado(EstadoSancion estado) => switch (estado) {
-  EstadoSancion.activa => const Color(0xFFB45309),
-  EstadoSancion.cumplida => const Color(0xFF1F9D55),
+Color _colorEstadoVisible(Sancion sancion) => switch (sancion.estadoVisible) {
+  'VIGENTE' => const Color(0xFFB45309),
+  'PROGRAMADA' => const Color(0xFF2563EB),
+  'FINALIZADA' => const Color(0xFF1F9D55),
   _ => const Color(0xFF77798B),
 };
 
@@ -503,8 +500,8 @@ class _DetalleSancionState extends State<_DetalleSancion> {
                 ),
                 const SizedBox(width: 8),
                 Etiqueta(
-                  sancion.estado.apiValue,
-                  color: _colorEstado(sancion.estado),
+                  sancion.estadoVisible,
+                  color: _colorEstadoVisible(sancion),
                 ),
               ],
             ),

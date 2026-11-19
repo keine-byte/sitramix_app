@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../config/app_theme.dart';
 import '../models/planilla/planilla.dart';
 import '../services/remote/api_service.dart';
+import '../services/remote/disponibilidad_conductor.dart';
 import '../services/remote/planillas_api.dart';
 import '../utils/api_error_message.dart';
 import '../utils/sesion_expirada.dart';
@@ -78,9 +79,30 @@ class _FormularioPlanillaScreenState extends State<FormularioPlanillaScreen> {
       _validacion = null;
     });
     try {
+      final placa = _placa.text.trim().toUpperCase();
+      final disponibilidad = DisponibilidadConductor(
+        api: widget.api.api,
+        token: widget.api.token,
+      );
+      final conductor = await disponibilidad.conductorDeVehiculo(placa);
+      final sancion = await disponibilidad.sancionVigente(
+        conductor ?? '',
+        _fecha!,
+      );
+      if (!mounted) return;
+      if (sancion != null) {
+        setState(
+          () => _error = mensajeConductorSancionado(
+            sancion,
+            identificacion: conductor ?? placa,
+          ),
+        );
+        return;
+      }
+
       final planilla = Planilla(
         fecha: _fecha,
-        placaVehiculo: _placa.text.trim().toUpperCase(),
+        placaVehiculo: placa,
         tipo: _tipo.text.trim(),
         tarifaId: int.parse(_tarifa.text.trim()),
       );

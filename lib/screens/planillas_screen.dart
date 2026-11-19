@@ -33,6 +33,8 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
 
   final TextEditingController _placaController = TextEditingController();
 
+  final TextEditingController _motivoController = TextEditingController();
+
   final List<Planilla> _planillas = <Planilla>[];
 
   EstadoPlanilla? _estado;
@@ -53,6 +55,7 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
   @override
   void dispose() {
     _placaController.dispose();
+    _motivoController.dispose();
     super.dispose();
   }
 
@@ -129,36 +132,72 @@ class _PlanillasScreenState extends State<PlanillasScreen> {
     final numero = planilla.numero;
     if (numero == null) return;
 
-    final confirmado = await showDialog<bool>(
+    _motivoController.clear();
+    final motivo = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Anular planilla $numero'),
-        content: const Text(
-          'La planilla quedará ANULADA. Se conservan los pagos y el historial.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
+      builder: (dialogContext) {
+        String? validacion;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: Text('Anular planilla $numero'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'La planilla quedará ANULADA. Se conservan los pagos y el '
+                  'historial.',
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _motivoController,
+                  autofocus: true,
+                  maxLength: 200,
+                  maxLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(
+                    labelText: 'Motivo de la anulación',
+                    errorText: validacion,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final texto = _motivoController.text.trim();
+                  if (texto.isEmpty) {
+                    setDialogState(
+                      () => validacion = 'Escribe el motivo de la anulación.',
+                    );
+                    return;
+                  }
+                  Navigator.of(dialogContext).pop(texto);
+                },
+                child: const Text('Anular'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Anular'),
-          ),
-        ],
-      ),
+        );
+      },
     );
-    if (confirmado != true || !mounted) return;
+    if (motivo == null || !mounted) return;
 
     setState(() => _anulando = numero);
     try {
+      // El endpoint DELETE no acepta el motivo todavía; queda en la
+      // confirmación para que quede constancia en la operación.
       final anulada = await widget.api.anular(numero);
       if (!mounted) return;
       setState(() {
         final index = _planillas.indexWhere((item) => item.numero == numero);
         if (index >= 0) _planillas[index] = anulada;
       });
-      _mostrarMensaje('Planilla $numero anulada.');
+      _mostrarMensaje('Planilla $numero anulada. Motivo: $motivo');
     } on ApiException catch (error) {
       if (!mounted) return;
       if (await cerrarSesionSiExpirada(context, error)) return;

@@ -5,6 +5,7 @@ import '../config/app_theme.dart';
 import '../models/despacho/despacho.dart';
 import '../services/remote/api_service.dart';
 import '../services/remote/despachos_api.dart';
+import '../services/remote/disponibilidad_conductor.dart';
 import '../utils/api_error_message.dart';
 import '../utils/sesion_expirada.dart';
 import '../widgets/buttons/primary_button.dart';
@@ -74,9 +75,30 @@ class _FormularioDespachoScreenState extends State<FormularioDespachoScreen> {
       _error = null;
     });
     try {
+      final placa = _placa.text.trim().toUpperCase();
+      final disponibilidad = DisponibilidadConductor(
+        api: widget.api.api,
+        token: widget.api.token,
+      );
+      final conductor = await disponibilidad.conductorDeVehiculo(placa);
+      final sancion = await disponibilidad.sancionVigente(
+        conductor ?? '',
+        _fecha ?? DateTime.now(),
+      );
+      if (!mounted) return;
+      if (sancion != null) {
+        setState(
+          () => _error = mensajeConductorSancionado(
+            sancion,
+            identificacion: conductor ?? placa,
+          ),
+        );
+        return;
+      }
+
       final despacho = Despacho(
         ruta: _ruta.text.trim(),
-        placaVehiculo: _placa.text.trim().toUpperCase(),
+        placaVehiculo: placa,
         numeroPasajeros: int.parse(_pasajeros.text.trim()),
         fecha: _fecha,
         hora: _hora == null ? null : horaApi(_hora!),

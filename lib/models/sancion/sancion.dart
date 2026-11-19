@@ -56,6 +56,26 @@ class Sancion {
   bool get vigenteHoy =>
       estado == EstadoSancion.activa && cubre(DateTime.now());
 
+  /// Estado en los términos del documento de la actividad:
+  /// PROGRAMADA (aún no inicia), VIGENTE (cubre hoy) y FINALIZADA (ya pasó).
+  String get estadoVisible {
+    if (estado == EstadoSancion.anulada) return 'ANULADA';
+    if (estado == EstadoSancion.cumplida) return 'FINALIZADA';
+    final hoy = DateTime.now();
+    final dia = DateTime(hoy.year, hoy.month, hoy.day);
+    final inicio = fechaInicio;
+    final fin = fechaFin;
+    if (inicio != null) {
+      final desde = DateTime(inicio.year, inicio.month, inicio.day);
+      if (dia.isBefore(desde)) return 'PROGRAMADA';
+    }
+    if (fin != null) {
+      final hasta = DateTime(fin.year, fin.month, fin.day);
+      if (dia.isAfter(hasta)) return 'FINALIZADA';
+    }
+    return 'VIGENTE';
+  }
+
   factory Sancion.fromJson(Map<String, dynamic> json) => Sancion(
     id: parseApiInt(json['id']),
     identificacionConductor:

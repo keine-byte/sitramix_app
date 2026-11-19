@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../models/common/page_query.dart';
 import '../models/conductor/conductor.dart';
+import '../models/sancion/sancion.dart';
 import '../services/remote/api_service.dart';
 import '../services/remote/conductores_api.dart';
+import '../services/remote/disponibilidad_conductor.dart';
+import '../services/remote/sanciones_api.dart';
 import '../utils/api_error_message.dart';
 import '../utils/fechas.dart';
 import '../utils/sesion_expirada.dart';
@@ -380,13 +383,41 @@ class _DetalleConductor extends StatefulWidget {
 class _DetalleConductorState extends State<_DetalleConductor> {
   late Conductor _conductor = widget.conductor;
 
+  List<Sancion> _sanciones = const <Sancion>[];
   bool _cargando = false;
+  bool _cargandoSanciones = false;
   String? _error;
+  String? _errorSanciones;
+
+  SancionesApi get _sancionesApi =>
+      SancionesApi(api: widget.api.api, token: widget.api.token);
 
   @override
   void initState() {
     super.initState();
     _refrescar();
+    _cargarSanciones();
+  }
+
+  Future<void> _cargarSanciones() async {
+    setState(() {
+      _cargandoSanciones = true;
+      _errorSanciones = null;
+    });
+    try {
+      final resultado = await _sancionesApi.listar(
+        query: const PageQuery(pageSize: 5),
+        conductor: widget.conductor.identificacion,
+      );
+      if (!mounted) return;
+      setState(() => _sanciones = resultado);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (await cerrarSesionSiExpirada(context, error)) return;
+      setState(() => _errorSanciones = mensajeDeApi(error));
+    } finally {
+      if (mounted) setState(() => _cargandoSanciones = false);
+    }
   }
 
   Future<void> _refrescar() async {
@@ -412,6 +443,13 @@ class _DetalleConductorState extends State<_DetalleConductor> {
   @override
   Widget build(BuildContext context) {
     final conductor = _conductor;
+    Sancion? sancionVigente;
+    for (final sancion in _sanciones) {
+      if (sancion.vigenteHoy) {
+        sancionVigente = sancion;
+        break;
+      }
+    }
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -493,7 +531,65 @@ class _DetalleConductorState extends State<_DetalleConductor> {
             ),
             CampoDetalle(Icons.phone_rounded, 'Celular', conductor.celular),
             CampoDetalle(Icons.mail_rounded, 'Correo', conductor.correo),
-            const SizedBox(height: 4),
+            const Divider(height: 24),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Sanciones',
+                    style: TextStyle(
+                      color: AppTheme.secondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (_cargandoSanciones)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            if (sancionVigente != null) ...[
+              const SizedBox(height: 8),
+              AvisoAccion(
+                mensajeConductorSancionado(
+                  sancionVigente,
+                  identificacion: conductor.identificacion,
+                ),
+                onAccion: _cargarSanciones,
+                etiquetaAccion: 'Volver a consultar',
+                habilitado: !_cargandoSanciones,
+              ),
+            ],
+            if (_errorSanciones != null) ...[
+              const SizedBox(height: 8),
+              AvisoAccion(
+                _errorSanciones!,
+                onAccion: _cargarSanciones,
+                habilitado: !_cargandoSanciones,
+              ),
+            ] else if (!_cargandoSanciones && _sanciones.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Sin sanciones registradas.',
+                  style: TextStyle(color: Color(0xFF77798B)),
+                ),
+              )
+            else
+              for (final sancion in _sanciones)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: DatoFila(
+                    Icons.gavel_rounded,
+                    '${formatearFecha(sancion.fechaInicio)} — '
+                    '${formatearFecha(sancion.fechaFin)} · ${sancion.motivo}'
+                    '${sancion.vigenteHoy ? ' · VIGENTE' : ''}',
+                  ),
+                ),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _cargando
                   ? null

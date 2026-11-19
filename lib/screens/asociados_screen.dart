@@ -121,6 +121,8 @@ class _AsociadosScreenState extends State<AsociadosScreen> {
         copiarTexto: widget.copiarTexto,
       ),
     );
+    if (!mounted) return;
+    await _consultar();
     if (aEditar == null || !mounted) return;
     await _abrirFormulario(asociado: aEditar);
   }
@@ -386,6 +388,7 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
   CredencialTemporal? _credencial;
   bool _cargando = false;
   bool _generando = false;
+  bool _desafiliando = false;
   String? _error;
 
   @override
@@ -428,6 +431,59 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
           .showSnackBar(SnackBar(content: Text(mensajeDeApi(error))));
     } finally {
       if (mounted) setState(() => _generando = false);
+    }
+  }
+
+  Future<void> _desafiliar() async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Desafiliar asociado'),
+        content: Text(
+          '${_asociado.nombres} pasará a estado INACTIVO. Se conservan sus '
+          'afiliaciones, planillas y pagos. ¿Deseas continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Desafiliar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+
+    setState(() {
+      _desafiliando = true;
+      _error = null;
+    });
+    try {
+      final actualizado = await widget.api.actualizar(
+        Asociado(
+          identificacion: _asociado.identificacion,
+          nombres: _asociado.nombres,
+          activo: false,
+          celular: _asociado.celular,
+          correo: _asociado.correo,
+          fechaNacimiento: _asociado.fechaNacimiento,
+          fechaIngreso: _asociado.fechaIngreso,
+        ),
+      );
+      if (!mounted) return;
+      setState(() => _asociado = actualizado);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Asociado desafiliado (INACTIVO).')),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      if (await cerrarSesionSiExpirada(context, error)) return;
+      setState(() => _error = mensajeDeApi(error));
+    } finally {
+      if (mounted) setState(() => _desafiliando = false);
     }
   }
 
@@ -537,6 +593,16 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
               'Fecha de ingreso',
               formatearFecha(asociado.fechaIngreso),
             ),
+            CampoDetalle(
+              Icons.today_rounded,
+              'Fecha de registro',
+              formatearFecha(asociado.fechaRegistro),
+            ),
+            CampoDetalle(
+              Icons.update_rounded,
+              'Última actualización',
+              formatearFecha(asociado.ultimaActualizacion),
+            ),
             const SizedBox(height: 4),
             OutlinedButton.icon(
               onPressed: _cargando || _generando
@@ -548,6 +614,24 @@ class _DetalleAsociadoState extends State<_DetalleAsociado> {
                 minimumSize: const Size.fromHeight(48),
               ),
             ),
+            if (asociado.activo) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _desafiliando ? null : _desafiliar,
+                icon: _desafiliando
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.person_off_rounded, size: 18),
+                label: const Text('Desafiliar asociado'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             if (widget.puedeGenerarCredencial) ...[
               const SizedBox(height: 8),

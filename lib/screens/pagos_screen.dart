@@ -10,6 +10,7 @@ import '../utils/fechas.dart';
 import '../utils/montos.dart';
 import '../widgets/data_rows.dart';
 import '../widgets/fields/custom_text_field.dart';
+import 'formulario_pago_screen.dart';
 
 class PagosScreen extends StatefulWidget {
   const PagosScreen({required this.api, super.key});
@@ -144,6 +145,21 @@ class _PagosScreenState extends State<PagosScreen> {
     );
   }
 
+  Future<void> _abrirFormulario() async {
+    final guardado = await Navigator.of(context).push<Pago>(
+      MaterialPageRoute<Pago>(
+        builder: (_) => FormularioPagoScreen(api: widget.api),
+      ),
+    );
+    if (guardado == null || !mounted) return;
+    _mostrarMensaje(
+      guardado.id == null
+          ? 'Pago registrado.'
+          : 'Pago #${guardado.id} registrado.',
+    );
+    await _consultar();
+  }
+
   void _mostrarMensaje(String texto) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
   }
@@ -158,6 +174,11 @@ class _PagosScreenState extends State<PagosScreen> {
         fontWeight: FontWeight.w700,
       ),
       actions: [
+        IconButton(
+          tooltip: 'Registrar pago',
+          onPressed: _abrirFormulario,
+          icon: const Icon(Icons.add_rounded),
+        ),
         IconButton(
           tooltip: 'Actualizar',
           onPressed: _cargando ? null : _consultar,

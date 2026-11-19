@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../config/app_theme.dart';
 import '../models/vehiculo/vehiculo.dart';
 import '../services/remote/api_service.dart';
+import '../services/remote/disponibilidad_conductor.dart';
 import '../services/remote/vehiculos_api.dart';
 import '../utils/api_error_message.dart';
 import '../utils/sesion_expirada.dart';
@@ -120,6 +121,29 @@ class _FormularioVehiculoScreenState extends State<FormularioVehiculoScreen> {
             ? textoONull(_identificacionConductor.text)
             : null,
       );
+
+      final conductor = vehiculo.identificacionConductor;
+      if (conductor != null && conductor.isNotEmpty) {
+        final disponible = DisponibilidadConductor(
+          api: widget.api.api,
+          token: widget.api.token,
+        );
+        final sancion = await disponible.sancionVigente(
+          conductor,
+          DateTime.now(),
+        );
+        if (!mounted) return;
+        if (sancion != null) {
+          setState(
+            () => _error = mensajeConductorSancionado(
+              sancion,
+              identificacion: conductor,
+            ),
+          );
+          return;
+        }
+      }
+
       final guardado = widget.esEdicion
           ? await widget.api.actualizar(vehiculo)
           : await widget.api.crear(vehiculo);
